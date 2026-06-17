@@ -137,9 +137,13 @@ else:
             all_text += "\n\n" + text_from_pdf
 
         # Backend Flow
-        text = all_text
+
+            text = all_text
+        st.write("Text Length:", len(text))
 
         chunks = create_chunks(text)
+
+        st.write("Chunks Count:", len(chunks))
 
         index, embeddings = create_vector_store(chunks)
 
