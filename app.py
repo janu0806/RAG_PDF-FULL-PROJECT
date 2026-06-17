@@ -138,12 +138,11 @@ else:
 
         # Backend Flow
 
-            text = all_text
-        st.write("Text Length:", len(text))
+            # Backend Flow
+
+        text = all_text
 
         chunks = create_chunks(text)
-
-        st.write("Chunks Count:", len(chunks))
 
         index, embeddings = create_vector_store(chunks)
 
@@ -151,12 +150,12 @@ else:
             question,
             index,
             chunks
-        )
+)
 
         answer = ask_local_llm(
             context,
             question
-        )
+)
 
         st.session_state.chat_history.append(
             {
