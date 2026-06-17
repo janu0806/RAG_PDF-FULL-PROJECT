@@ -105,7 +105,9 @@ with col2:
     submit = st.button("🔍 Get Answer", use_container_width=True)
 
 # Processing
+
 if submit:
+
 
     if not uploaded_files:
         st.warning("⚠️ Please upload at least one PDF.")
@@ -113,73 +115,79 @@ if submit:
     elif question.strip() == "":
         st.warning("⚠️ Please enter a question.")
 
-    else:
+else:
 
-        with st.spinner("🔍 Processing document..."):
+    with st.spinner("🔍 Processing document..."):
 
-            # Read all uploaded PDFs
-            all_text =""
-            
-    for uploaded_file in uploaded_files:
+        # Read all uploaded PDFs
+        all_text = ""
 
-        with tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".pdf"
-    ) as tmp_file:
+        for uploaded_file in uploaded_files:
 
-            tmp_file.write(uploaded_file.read())
-            pdf_path = tmp_file.name
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=".pdf"
+            ) as tmp_file:
 
-            all_text += "\n\n" + read_pdf(pdf_path)
+                uploaded_file.seek(0)
+                tmp_file.write(uploaded_file.read())
+                pdf_path = tmp_file.name
 
-            text = all_text
-            # Backend Flow
-            text = read_pdf(pdf_path)
+            text_from_pdf = read_pdf(pdf_path)
+            all_text += "\n\n" + text_from_pdf
 
-            chunks = create_chunks(text)
+        # Backend Flow
+        text = all_text
 
-            index, embeddings = create_vector_store(chunks)
+        chunks = create_chunks(text)
 
-            context = retrieve_chunk(
-                question,
-                index,
-                chunks
-            )
+        index, embeddings = create_vector_store(chunks)
 
-            answer = ask_local_llm(
-                context,
-                question
-            )
-            st.session_state.chat_history.append(
-    {
-        "question": question,
-        "answer": answer
-    }
-)
-            col1, col2, col3 = st.columns(3)
+        context = retrieve_chunk(
+            question,
+            index,
+            chunks
+        )
 
-            with col1:
-                st.metric("📄 Chunks", len(chunks))
+        answer = ask_local_llm(
+            context,
+            question
+        )
 
-            with col2:
-                st.metric("🧠 Context Length", len(context))
+        st.session_state.chat_history.append(
+            {
+                "question": question,
+                "answer": answer
+            }
+        )
 
-            with col3:
-                st.metric("⚡ Answer Length", len(answer))
+        col1, col2, col3 = st.columns(3)
 
-        st.success("✅ Answer Generated")
+        with col1:
+            st.metric("📄 Chunks", len(chunks))
 
-        st.markdown("## 🤖 AI Response")
+        with col2:
+            st.metric("🧠 Context Length", len(context))
 
-        st.markdown("### ❓ Question")
-        st.info(question)
+        with col3:
+            st.metric("⚡ Answer Length", len(answer))
 
-        st.markdown("### 🤖 Answer")
-        st.success(answer)
+    st.success("✅ Answer Generated")
 
-        with st.expander("📄 Retrieved Context"):
-            st.write(context)
-        st.markdown("## 💬 Chat History")
+    st.markdown("## 🤖 AI Response")
+
+    st.markdown("### ❓ Question")
+    st.info(question)
+
+    st.markdown("### 🤖 Answer")
+    st.success(answer)
+
+    with st.expander("📄 Retrieved Context"):
+        st.write(context)
+
+# Chat History
+
+st.markdown("## 💬 Chat History")
 
 for chat in reversed(st.session_state.chat_history):
 
@@ -189,15 +197,16 @@ for chat in reversed(st.session_state.chat_history):
     st.markdown("### 🤖 AI")
     st.success(chat["answer"])
 
-    st.markdown("---")    
+    st.markdown("---")
+
+
 # Footer
+
 st.markdown("---")
 
 st.markdown(
-    """
-    <center>
-    Made with ❤️ using Streamlit, FAISS and Local AI
-    </center>
-    """,
-    unsafe_allow_html=True
+""" <center>
+Made with ❤️ using Streamlit, FAISS and Local AI </center>
+""",
+unsafe_allow_html=True
 )
