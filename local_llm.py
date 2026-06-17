@@ -7,16 +7,12 @@ def ask_local_llm(context, question):
 
     if generator is None:
         generator = pipeline(
-            "text-generation",
-            model="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            "text2text-generation",
+            model="google/flan-t5-small"
         )
 
     prompt = f"""
-You are an AI assistant.
-
-Answer ONLY from the given context.
-If the answer is not in the context, say:
-"I could not find the answer in the document."
+Answer the question only from the context.
 
 Context:
 {context}
@@ -29,20 +25,7 @@ Answer:
 
     result = generator(
         prompt,
-        max_new_tokens=80,
-        do_sample=False,
-        truncation=True
+        max_new_tokens=50
     )
 
-    generated_text = result[0]["generated_text"]
-
-    if "Answer:" in generated_text:
-        answer = generated_text.split("Answer:")[-1].strip()
-    else:
-        answer = generated_text.strip()
-
-    # Remove unwanted extra generated text
-    if "Question:" in answer:
-        answer = answer.split("Question:")[0].strip()
-
-    return answer
+    return result[0]["generated_text"]
