@@ -1,4 +1,7 @@
+gemini_service.py
+test_gemini.py
+.env
+venv/
+.venv/
 __pycache__/
 *.pyc
-venv/
-.env

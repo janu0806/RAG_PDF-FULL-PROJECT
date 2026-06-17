@@ -20,6 +20,10 @@ def retrieve_chunk(question, index, chunks):
 
     question_embedding = model.encode([question])
 
-    distances, indices = index.search(question_embedding, 1)
+    distances, indices = index.search(question_embedding, 3)
 
-    return chunks[indices[0][0]]
+    context = "\n\n".join(
+        [chunks[i] for i in indices[0]]
+    )
+
+    return context

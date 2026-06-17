@@ -1,28 +1,13 @@
 import streamlit as st
 import tempfile
 import os
-import google.generativeai as genai
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-genai.configure(api_key="YOUR_API_KEY")
-from pdf_reader import read_pdf
 from chunking import create_chunks
 from vector_store import create_vector_store, retrieve_chunk
-from gemini_service import ask_gemini
-
-
-st.write("API KEY FOUND:", os.getenv("YOUR_API_KEY"))
-
-try:
-    genai.configure(api_key=os.getenv("YOUR_API_KEY"))
-
-    test_model = genai.GenerativeModel("gemini-2.0-flash")
-
-    if st.button("🧪 Test Gemini Connection"):
-        response = test_model.generate_content("Say hello")
-        st.success(response.text)
-
-except Exception as e:
-    st.error(f"Gemini Error: {e}")
+from local_llm import ask_local_llm
+from pdf_reader import read_pdf
 
 # Page Config
 st.set_page_config(
@@ -54,11 +39,13 @@ st.markdown("""
 }
 
 .answer-box {
-    padding: 20px;
-    border-radius: 12px;
-    background-color: #1E1E1E;
+    padding: 25px;
+    border-radius: 15px;
+    background-color: #1A1D24;
     color: white;
     border: 1px solid #333;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.3);
+
 }
 
 </style>
@@ -71,33 +58,40 @@ st.markdown(
 )
 
 st.markdown(
-    "<div class='subtitle'>Upload any PDF and ask questions instantly using Gemini + FAISS</div>",
+    "<div class='subtitle'>Upload any PDF and ask questions instantly using Local AI + FAISS</div>",
     unsafe_allow_html=True
 )
 
 # Sidebar
 with st.sidebar:
     st.header("📂 Document Upload")
-    uploaded_file = st.file_uploader(
-        "Upload PDF",
-        type=["pdf"]
-    )
+    uploaded_files = st.file_uploader(
+    "Upload PDFs",
+    type=["pdf"],
+    accept_multiple_files=True
+)
 
     st.markdown("---")
 
     st.markdown("""
-    ### 🚀 Features
+### 🚀 Features
 
-    ✅ PDF Question Answering
+✅ PDF Question Answering
 
-    ✅ FAISS Vector Search
+✅ FAISS Vector Search
 
-    ✅ Gemini AI
+✅ Local AI Model
 
-    ✅ Semantic Retrieval
+✅ Semantic Retrieval
 
-    ✅ Fast Responses
-    """)
+✅ Fast Responses
+""")
+    
+    st.markdown("---")
+
+    if st.button("🗑️ Clear Chat"):
+        st.session_state.chat_history = []
+        st.rerun()
 
 # Main Section
 question = st.text_input(
@@ -113,25 +107,32 @@ with col2:
 # Processing
 if submit:
 
-    if uploaded_file is None:
-        st.warning("⚠️ Please upload a PDF first.")
-    
+    if not uploaded_files:
+        st.warning("⚠️ Please upload at least one PDF.")
+
     elif question.strip() == "":
         st.warning("⚠️ Please enter a question.")
-    
+
     else:
 
         with st.spinner("🔍 Processing document..."):
 
-            # Save uploaded PDF temporarily
-            with tempfile.NamedTemporaryFile(
-                delete=False,
-                suffix=".pdf"
-            ) as tmp_file:
+            # Read all uploaded PDFs
+            all_text =""
+            
+    for uploaded_file in uploaded_files:
 
-                tmp_file.write(uploaded_file.read())
-                pdf_path = tmp_file.name
+        with tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pdf"
+    ) as tmp_file:
 
+            tmp_file.write(uploaded_file.read())
+            pdf_path = tmp_file.name
+
+            all_text += "\n\n" + read_pdf(pdf_path)
+
+            text = all_text
             # Backend Flow
             text = read_pdf(pdf_path)
 
@@ -145,34 +146,57 @@ if submit:
                 chunks
             )
 
-            answer = ask_gemini(
+            answer = ask_local_llm(
                 context,
                 question
             )
+            st.session_state.chat_history.append(
+    {
+        "question": question,
+        "answer": answer
+    }
+)
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric("📄 Chunks", len(chunks))
+
+            with col2:
+                st.metric("🧠 Context Length", len(context))
+
+            with col3:
+                st.metric("⚡ Answer Length", len(answer))
 
         st.success("✅ Answer Generated")
 
         st.markdown("## 🤖 AI Response")
 
-        st.markdown(
-            f"""
-            <div class="answer-box">
-            {answer}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.markdown("### ❓ Question")
+        st.info(question)
+
+        st.markdown("### 🤖 Answer")
+        st.success(answer)
 
         with st.expander("📄 Retrieved Context"):
             st.write(context)
+        st.markdown("## 💬 Chat History")
 
+for chat in reversed(st.session_state.chat_history):
+
+    st.markdown("### 👤 User")
+    st.info(chat["question"])
+
+    st.markdown("### 🤖 AI")
+    st.success(chat["answer"])
+
+    st.markdown("---")    
 # Footer
 st.markdown("---")
 
 st.markdown(
     """
     <center>
-    Made with ❤️ using Streamlit, FAISS and Gemini AI
+    Made with ❤️ using Streamlit, FAISS and Local AI
     </center>
     """,
     unsafe_allow_html=True
